@@ -7,10 +7,7 @@ import { ShieldAlert, X, Loader2 } from "lucide-react";
 import { useAuthSession } from "@/app/utils/useAuthSession";
 import { useIdleTimeout } from "@/app/utils/useIdleTimeout";
 
-// NOTE: Your sidebar is at app/sidebar/page.tsx
-// Your dashboard is at app/dashboard/page.tsx
-// So the relative import is: "../sidebar/page"
-import Sidebar from "../sidebar/page";
+import Sidebar from "../components/sidebar/page";
 import Header from "../components/header/page";
 
 // ── Regular pages ─────────────────────────────────────────────────────────────
@@ -20,7 +17,11 @@ import Admins from "./Admins";
 import RegisteredUsers from "./RegisteredUsers";
 import Facilities from "./Facilities";
 import Visitors from "./Visitors";
-import LegalAffairs from "./LegalAffairs";
+
+// ── Legal sub-pages (app/dashboard/legal/) ───────────────────────────────────
+import LegalContracts from "./legal/LegalContracts";
+import LegalEmployees from "./legal/LegalEmployees";
+import LegalVehicles from "./legal/LegalVehicles";
 
 // ── Documents sub-pages (app/dashboard/documents/) ───────────────────────────
 import DocuEmployees from "./documents/DocuEmployees";
@@ -136,8 +137,6 @@ export default function Dashboard() {
   }
 
   // ── Route switcher ────────────────────────────────────────────────────────
-  // "Documents/Employees", "Documents/Vehicles", "Documents/Organizations"
-  // are set by clicking the dropdown children in the sidebar.
   const renderView = () => {
     switch (active) {
       case "Home":
@@ -152,8 +151,14 @@ export default function Dashboard() {
         return <Facilities />;
       case "Visitors":
         return <Visitors />;
-      case "Legal Affairs":
-        return <LegalAffairs />;
+
+      // ── Legal sub-pages ──────────────────────────────────────────────────
+      case "Legal/Contracts":
+        return <LegalContracts />;
+      case "Legal/Employees":
+        return <LegalEmployees />;
+      case "Legal/Vehicles":
+        return <LegalVehicles />;
 
       // ── Documents sub-pages ──────────────────────────────────────────────
       case "Documents/Employees":
@@ -179,8 +184,9 @@ export default function Dashboard() {
       />
 
       <div
-        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ${sidebarOpen ? "lg:ml-64" : "ml-0"
-          }`}
+        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ${
+          sidebarOpen ? "lg:ml-64" : "ml-0"
+        }`}
       >
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main

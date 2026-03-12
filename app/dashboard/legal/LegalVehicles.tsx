@@ -7,29 +7,34 @@ import {
     Download, Maximize2, ExternalLink, Eye, Calendar,
     Filter, ImageOff, AlertTriangle, CheckCircle2,
     FileText, ShieldCheck, ShieldAlert, Image as ImageIcon,
-    RefreshCw, Clock,
+    RefreshCw, Clock, Battery, Fuel,
 } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════════
-// TYPES
+// TYPES  — match exact Supabase schema
 // ══════════════════════════════════════════════════════════════════
 
 interface VehicleDoc {
     id: string;
     vehicle_id: string;
     document_type: string;
-    file_url: string;          // ← always a fully-resolved public URL after load()
+    file_url: string;       // always a fully-resolved public URL after load()
     verified: boolean | null;
     created_at: string;
 }
 
 interface Vehicle {
     id: string;
-    plate_number?: string | null;
-    make?: string | null;
-    model?: string | null;
-    year?: number | null;
-    color?: string | null;
+    unit_id: string;
+    plate_number: string;
+    model: string;
+    type: string;
+    status: string | null;
+    condition: string | null;
+    battery_health: string | null;
+    fuel_level: string | null;
+    driver_name: string | null;
+    email: string | null;
     docs: VehicleDoc[];
 }
 
@@ -40,14 +45,11 @@ const BUCKET = "log2_vehicle-docs";
 // HELPERS
 // ══════════════════════════════════════════════════════════════════
 
-/** Resolve a raw storage path → full public URL.
- *  Mirrors the same logic used in DocuVehicles.tsx load(). */
-function resolveUrl(raw: string): string {
-    if (!raw) return "";
-    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-    const sb = createClient();
-    const { data } = sb.storage.from(BUCKET).getPublicUrl(raw);
-    return data?.publicUrl ?? "";
+function formatDate(iso: string | null): string {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric",
+    });
 }
 
 function isImage(url: string) {
@@ -58,12 +60,13 @@ function isPdf(url: string) {
     return /\.pdf(\?.*)?$/i.test(url);
 }
 
-function formatDate(iso: string | null): string {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-US", {
-        month: "short", day: "numeric", year: "numeric",
-    });
-}
+// Status badge colours
+const STATUS_BADGE: Record<string, string> = {
+    Active: "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30",
+    Onboarding: "bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30",
+    Inactive: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600",
+    Suspended: "bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30",
+};
 
 // ══════════════════════════════════════════════════════════════════
 // LIGHTBOX
@@ -127,7 +130,7 @@ function Lightbox({ url, title, onClose }: { url: string; title: string; onClose
 
 function DocThumb({ doc, onClick }: { doc: VehicleDoc; onClick: () => void }) {
     const [imgErr, setImgErr] = useState(false);
-    const url = doc.file_url;          // already resolved
+    const url = doc.file_url;
     const isImg = isImage(url) && !imgErr;
     const isPDF = isPdf(url);
     const isInsurance = doc.document_type === "Insurance";
@@ -149,20 +152,14 @@ function DocThumb({ doc, onClick }: { doc: VehicleDoc; onClick: () => void }) {
                     <ImageOff size={18} className="text-slate-300" />
                 </div>
             )}
-
-            {/* Hover overlay */}
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Maximize2 size={14} className="text-white" />
             </div>
-
-            {/* Type badge */}
             <div className="absolute top-1.5 left-1.5">
                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${isInsurance ? "bg-violet-600 text-white" : "bg-sky-600 text-white"}`}>
                     {doc.document_type}
                 </span>
             </div>
-
-            {/* Verified badge */}
             <div className="absolute top-1.5 right-1.5">
                 {doc.verified
                     ? <span className="text-[8px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">✓</span>
@@ -189,29 +186,38 @@ function VehicleCard({ vehicle, onLightbox }: {
     );
     const insuranceUrl = insurance?.file_url ?? null;
     const isInsuranceVerified = insurance?.verified ?? false;
-    const displayName = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Unknown Vehicle";
+    const displayName = `${vehicle.model} (${vehicle.plate_number})`;
+    const statusBadge = STATUS_BADGE[vehicle.status ?? ""] ?? STATUS_BADGE.Inactive;
 
     return (
         <div className="bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-2xl overflow-hidden hover:shadow-md transition-all">
 
-            {/* Header */}
+            {/* ── Header ── */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/60 dark:bg-slate-900/20">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-sky-700 flex items-center justify-center shrink-0">
                     <Car size={16} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-slate-900 dark:text-white truncate">{displayName}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {vehicle.plate_number && (
-                            <span className="text-[9px] font-mono bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded-md">
-                                {vehicle.plate_number}
-                            </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-sm font-black text-slate-900 dark:text-white truncate">{vehicle.model}</p>
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${statusBadge}`}>
+                            {vehicle.status ?? "Unknown"}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        <span className="text-[9px] font-mono bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded-md">
+                            {vehicle.plate_number}
+                        </span>
+                        <span className="text-[9px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-md">
+                            {vehicle.unit_id}
+                        </span>
+                        {vehicle.type && (
+                            <span className="text-[9px] text-slate-400">{vehicle.type}</span>
                         )}
-                        {vehicle.color && <span className="text-[9px] text-slate-400">{vehicle.color}</span>}
                     </div>
                 </div>
 
-                {/* Legal status badge */}
+                {/* Legal status */}
                 <div className="shrink-0">
                     {!insurance ? (
                         <span className="flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
@@ -229,10 +235,34 @@ function VehicleCard({ vehicle, onLightbox }: {
                 </div>
             </div>
 
-            {/* Body */}
+            {/* ── Meta row (driver / condition / battery / fuel) ── */}
+            <div className="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 border-b border-slate-100 dark:border-slate-700/40 bg-white dark:bg-transparent">
+                {vehicle.driver_name && (
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        👤 {vehicle.driver_name}
+                    </span>
+                )}
+                {vehicle.condition && (
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        🔧 {vehicle.condition}
+                    </span>
+                )}
+                {vehicle.battery_health && (
+                    <span className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+                        <Battery size={9} /> {vehicle.battery_health}
+                    </span>
+                )}
+                {vehicle.fuel_level && (
+                    <span className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+                        <Fuel size={9} /> {vehicle.fuel_level}
+                    </span>
+                )}
+            </div>
+
+            {/* ── Body ── */}
             <div className="p-3 space-y-3">
 
-                {/* Insurance */}
+                {/* Insurance section */}
                 <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 flex items-center gap-1">
                         <ShieldCheck size={9} /> Insurance
@@ -377,7 +407,7 @@ function StatCard({ label, value, icon: Icon, iconBg, iconColor, valueColor = "t
 }
 
 // ══════════════════════════════════════════════════════════════════
-// MAIN
+// MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════
 
 export default function LegalVehicles() {
@@ -397,7 +427,7 @@ export default function LegalVehicles() {
 
             const [fleetRes, docsRes] = await Promise.all([
                 sb.from("log2_fleet")
-                    .select("id, plate_number, make, model, year, color")
+                    .select("id, unit_id, plate_number, model, type, status, condition, battery_health, fuel_level, driver_name, email")
                     .order("created_at", { ascending: false }),
                 sb.from("log2_vehicle_documents")
                     .select("id, vehicle_id, document_type, file_url, verified, created_at")
@@ -407,7 +437,7 @@ export default function LegalVehicles() {
             if (fleetRes.error) throw fleetRes.error;
             if (docsRes.error) throw docsRes.error;
 
-            // ── Resolve every file_url to a full public URL (same as DocuVehicles) ──
+            // ── Resolve every file_url to a full public URL at fetch time ──
             const resolvedDocs: VehicleDoc[] = (docsRes.data ?? []).map((d: any) => {
                 let url = d.file_url ?? "";
                 if (url && !url.startsWith("http")) {
@@ -424,7 +454,7 @@ export default function LegalVehicles() {
                 };
             });
 
-            // Group resolved docs by vehicle_id
+            // Group docs by vehicle_id
             const docsByVehicle: Record<string, VehicleDoc[]> = {};
             for (const doc of resolvedDocs) {
                 if (!doc.vehicle_id) continue;
@@ -434,11 +464,16 @@ export default function LegalVehicles() {
 
             const enriched: Vehicle[] = (fleetRes.data ?? []).map((v: any) => ({
                 id: v.id,
+                unit_id: v.unit_id,
                 plate_number: v.plate_number,
-                make: v.make,
                 model: v.model,
-                year: v.year,
-                color: v.color,
+                type: v.type,
+                status: v.status,
+                condition: v.condition,
+                battery_health: v.battery_health,
+                fuel_level: v.fuel_level,
+                driver_name: v.driver_name,
+                email: v.email,
                 docs: docsByVehicle[v.id] ?? [],
             }));
 
@@ -453,16 +488,17 @@ export default function LegalVehicles() {
     useEffect(() => { load(); }, [load]);
     useEffect(() => { setPage(1); }, [search, fVerified]);
 
-    // Stats
+    // ── Stats ──
     const withInsurance = vehicles.filter(v => v.docs.some(d => d.document_type === "Insurance")).length;
     const verified = vehicles.filter(v => v.docs.some(d => d.document_type === "Insurance" && d.verified)).length;
     const unverified = withInsurance - verified;
     const noInsurance = vehicles.length - withInsurance;
 
-    // Filter
+    // ── Filter ──
     const filtered = vehicles.filter(v => {
         const q = search.toLowerCase();
-        const display = [v.year, v.make, v.model, v.plate_number, v.color].filter(Boolean).join(" ").toLowerCase();
+        const display = [v.model, v.plate_number, v.unit_id, v.type, v.driver_name, v.status, v.condition]
+            .filter(Boolean).join(" ").toLowerCase();
         const nameMatch = display.includes(q);
         const ins = v.docs.find(d => d.document_type === "Insurance");
         if (fVerified === "verified") return nameMatch && !!ins?.verified;
@@ -483,6 +519,7 @@ export default function LegalVehicles() {
             )}
 
             <div className="space-y-4">
+
                 {/* Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard label="Total Vehicles" value={vehicles.length} icon={Car}
@@ -506,7 +543,7 @@ export default function LegalVehicles() {
                     <div className="flex gap-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={13} />
-                            <input type="text" placeholder="Search by plate, make, model, color…"
+                            <input type="text" placeholder="Search by plate, unit ID, model, driver, status…"
                                 value={search} onChange={e => setSearch(e.target.value)}
                                 className="w-full pl-8 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 outline-none transition-all" />
                         </div>
