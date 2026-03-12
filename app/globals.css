@@ -1,0 +1,42 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap");
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-poppins: "Poppins", sans-serif;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+@theme inline {
+  --font-sans: var(--font-poppins);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Adding the shimmer animation here for the Navbar button */
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-poppins);
+}
+
+/* Helper class for your Deploy button */
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
