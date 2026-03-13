@@ -94,8 +94,8 @@ function IconBtn({
       onClick={onClick}
       title={title}
       className={`relative p-2 md:p-2.5 rounded-xl transition-all focus:outline-none ${active
-          ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
-          : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+        ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
         }`}
     >
       {children}
@@ -535,11 +535,19 @@ export default function Header({ sidebarOpen, setSidebarOpen, onNavigate }: Head
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const { adminName, initials, loading, handleSignOut, userId } = useAuthSession();
+  const { adminName, initials, loading, handleSignOut } = useAuthSession();
+  const [userId, setUserId] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const sb = createClient();
+    sb.auth.getSession().then(({ data }) => {
+      setUserId(data.session?.user?.id ?? null);
+    });
+  }, []);
 
   // ── Theme init ──
   useEffect(() => {
@@ -939,8 +947,8 @@ export default function Header({ sidebarOpen, setSidebarOpen, onNavigate }: Head
             <div
               onClick={() => !isLoggingOut && togglePanel("user")}
               className={`flex items-center gap-2 cursor-pointer px-2 md:px-3 py-1.5 rounded-xl transition-all border border-transparent ${activePanel === "user"
-                  ? "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700"
-                  : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                ? "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700"
+                : "hover:bg-slate-50 dark:hover:bg-slate-800"
                 } ${isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-600 border-2 border-white dark:border-slate-700 shadow-sm flex items-center justify-center text-white font-black text-xs shrink-0">
