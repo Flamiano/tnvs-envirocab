@@ -212,7 +212,8 @@ function ActivitySparkline({ visitors }: { visitors: WalkInVisitor[] }) {
           <YAxis allowDecimals={false} tick={{ fontSize: 9, fontWeight: 700, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
           <Tooltip cursor={{ stroke: "#0ea5e9", strokeWidth: 1, strokeDasharray: "4 4" }}
             contentStyle={{ backgroundColor: "#0f172a", borderRadius: "10px", border: "1px solid #1e293b", fontSize: "12px", fontWeight: 700, color: "#f1f5f9" }}
-            formatter={(v: number) => [v, "Visitors"]} />
+            formatter={(v: number | undefined) => [v ?? 0, "Visitors"]}
+          />
           <Area type="monotone" dataKey="count" stroke="#0ea5e9" strokeWidth={2} fill="url(#visitGrad)"
             dot={{ r: 3, fill: "#0ea5e9", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#0ea5e9", stroke: "#fff", strokeWidth: 2 }} />
         </AreaChart>
