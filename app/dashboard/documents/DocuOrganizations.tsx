@@ -66,8 +66,8 @@ function VisibilityBadge({ v }: { v: "Internal" | "External" }) {
     const isExt = v === "External";
     return (
         <span className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full border ${isExt
-                ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
-                : "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+            ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+            : "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
             }`}>
             {isExt ? <Globe size={8} /> : <Lock size={8} />}
             {v}
@@ -142,7 +142,7 @@ interface FileDropZoneProps {
     onDrop: (e: React.DragEvent) => void;
     onClick: () => void;
     onRemove: (e: React.MouseEvent) => void;
-    fileRef: React.RefObject<HTMLInputElement>;
+    fileRef: React.RefObject<HTMLInputElement | null>;  
     onFileInput: (e: React.ChangeEvent<HTMLInputElement>) => void;
     label?: string;
 }
@@ -159,10 +159,10 @@ function FileDropZone({
             onDrop={onDrop}
             onClick={() => !file && onClick()}
             className={`relative rounded-2xl border-2 border-dashed transition-all duration-200 overflow-hidden ${file
-                    ? "border-teal-300 dark:border-teal-500/40 bg-teal-50/50 dark:bg-teal-500/5 cursor-default"
-                    : dragging
-                        ? "border-teal-400 bg-teal-50 dark:bg-teal-500/10 scale-[1.01] cursor-copy"
-                        : "border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/30 dark:hover:bg-teal-500/5 cursor-pointer"
+                ? "border-teal-300 dark:border-teal-500/40 bg-teal-50/50 dark:bg-teal-500/5 cursor-default"
+                : dragging
+                    ? "border-teal-400 bg-teal-50 dark:bg-teal-500/10 scale-[1.01] cursor-copy"
+                    : "border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/30 dark:hover:bg-teal-500/5 cursor-pointer"
                 }`}>
             <input ref={fileRef} type="file"
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -170,8 +170,8 @@ function FileDropZone({
             {!file ? (
                 <div className="flex flex-col items-center justify-center py-8 gap-3 select-none">
                     <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all ${dragging
-                            ? "bg-teal-100 dark:bg-teal-500/20 border-teal-300 dark:border-teal-500/40"
-                            : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                        ? "bg-teal-100 dark:bg-teal-500/20 border-teal-300 dark:border-teal-500/40"
+                        : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                         }`}>
                         <CloudUpload size={20} className={dragging ? "text-teal-500" : "text-slate-400 dark:text-slate-500"} />
                     </div>
@@ -218,14 +218,14 @@ function VisibilityPicker({
                 return (
                     <button key={v} onClick={() => onChange(v)} disabled={disabled}
                         className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border-2 transition-all text-left disabled:opacity-50 ${active
-                                ? isExt
-                                    ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/50"
-                                    : "border-amber-400 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/50"
-                                : "border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-slate-50 dark:bg-slate-800/40"
+                            ? isExt
+                                ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/50"
+                                : "border-amber-400 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/50"
+                            : "border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-slate-50 dark:bg-slate-800/40"
                             }`}>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active
-                                ? isExt ? "bg-emerald-100 dark:bg-emerald-500/20" : "bg-amber-100 dark:bg-amber-500/20"
-                                : "bg-slate-100 dark:bg-slate-700"
+                            ? isExt ? "bg-emerald-100 dark:bg-emerald-500/20" : "bg-amber-100 dark:bg-amber-500/20"
+                            : "bg-slate-100 dark:bg-slate-700"
                             }`}>
                             {isExt
                                 ? <Globe size={13} className={active ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"} />
@@ -233,8 +233,8 @@ function VisibilityPicker({
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className={`text-xs font-black ${active
-                                    ? isExt ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"
-                                    : "text-slate-600 dark:text-slate-400"
+                                ? isExt ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"
+                                : "text-slate-600 dark:text-slate-400"
                                 }`}>{v}</p>
                             <p className="text-[9px] text-slate-400 dark:text-slate-500">{isExt ? "Anyone can see" : "Staff only"}</p>
                         </div>
@@ -631,8 +631,8 @@ function SuccessState({ label, icon }: { label: string; icon?: string }) {
     return (
         <div className="flex flex-col items-center justify-center py-8 gap-3">
             <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center ${icon === "trash"
-                    ? "bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30"
-                    : "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30"
+                ? "bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30"
+                : "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30"
                 }`}>
                 {icon === "trash"
                     ? <Trash2 size={26} className="text-rose-500" />
@@ -1066,10 +1066,10 @@ export default function DocuOrganizations() {
                             {(["all", "External", "Internal"] as const).map(v => (
                                 <button key={v} onClick={() => setFVisibility(v)}
                                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${fVisibility === v
-                                            ? v === "External" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shadow-sm"
-                                                : v === "Internal" ? "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-sm"
-                                                    : "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                                        ? v === "External" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shadow-sm"
+                                            : v === "Internal" ? "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-sm"
+                                                : "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
                                         }`}>
                                     {v === "External" && <Globe size={9} />}
                                     {v === "Internal" && <Lock size={9} />}
