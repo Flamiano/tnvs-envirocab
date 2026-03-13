@@ -27,6 +27,7 @@ import LegalVehicles from "./legal/LegalVehicles";
 import DocuEmployees from "./documents/DocuEmployees";
 import DocuVehicles from "./documents/DocuVehicles";
 import DocuOrganizations from "./documents/DocuOrganizations";
+import Settings from "./Settings";
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -167,6 +168,8 @@ export default function Dashboard() {
         return <DocuVehicles />;
       case "Documents/Organizations":
         return <DocuOrganizations />;
+      case "Settings":
+        return <Settings />;
 
       default:
         return <HomeContent currentTab={currentTab} setCurrentTab={setCurrentTab} adminName={adminName} />;
@@ -184,11 +187,14 @@ export default function Dashboard() {
       />
 
       <div
-        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ${
-          sidebarOpen ? "lg:ml-64" : "ml-0"
-        }`}
+        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ${sidebarOpen ? "lg:ml-64" : "ml-0"
+          }`}
       >
-        <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Header
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          onNavigate={(section) => setActive(section)}
+        />
         <main
           ref={scrollContainerRef}
           className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto"

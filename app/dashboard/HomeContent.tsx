@@ -5,18 +5,18 @@ import { createClient } from "@supabase/supabase-js";
 import {
   Calendar, Car, ShieldCheck, CheckCircle2, Clock, Users, FileText,
   DoorOpen, TrendingUp, AlertCircle, RefreshCw, Activity, Wifi, WifiOff,
-  Newspaper, Plus, Pencil, Trash2, X, Upload, Tag, Megaphone,
-  BriefcaseBusiness, Eye, EyeOff, ImageIcon, ChevronDown,
-  BookOpen, Sparkles, Building2, Heart, Info,
+  Newspaper, Plus, Pencil, Trash2, X, Upload, Megaphone,
+  BriefcaseBusiness, Eye, EyeOff, ImageIcon, ChevronDown, Tag,
+  Sparkles, Building2, Heart, BookOpen,
 } from "lucide-react";
 
-// ── Supabase ──────────────────────────────────────────────────────────────────
+// ─── Supabase ─────────────────────────────────────────────────────────────────
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface DashboardStats {
   totalFleet: number; activeFleet: number; onboardingFleet: number;
   todayVisitors: number; checkedInVisitors: number;
@@ -35,29 +35,21 @@ interface RecentGatepass { id: string; requested_by_name: string; purpose: strin
 interface FleetVehicle { id: string; unit_id: string; plate_number: string; model: string; type: string; status: string; driver_name: string; }
 interface HomeContentProps { currentTab: string; setCurrentTab: (t: string) => void; adminName: string; }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES = ["Company News", "Announcement", "Update", "Event"];
-const STATUS_OPTIONS: string[] = ["published", "draft", "archived"];
+const STATUS_OPTIONS = ["published", "draft", "archived"] as const;
 
-/**
- * image_path format in DB:  "promo/promo.jpg"  |  "hiring/hiring.jpg"  |  "company/company.jpg"
- * For new uploads we generate:  "promo/promo_<ts>.<ext>"
- */
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function buildStoragePath(isPromo: boolean, isHiring: boolean, filename: string): string {
   const folder = isPromo ? "promo" : isHiring ? "hiring" : "company";
   const base = isPromo ? "promo" : isHiring ? "hiring" : "company";
   const ext = filename.split(".").pop()?.toLowerCase() ?? "jpg";
+  // Result: "promo/promo_1710000000000.jpg" — matches your DB convention
   return `${folder}/${base}_${Date.now()}.${ext}`;
 }
 
-// ── Shared Styles ─────────────────────────────────────────────────────────────
-const inputCls =
-  "w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl " +
-  "outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400 " +
-  "text-slate-800 placeholder:text-slate-400 transition-all";
-const textareaCls = `${inputCls} resize-none`;
+const inp = "w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-400/40 focus:border-sky-400 text-slate-800 placeholder:text-slate-400 transition-all";
 
-// ── StatusBadge ───────────────────────────────────────────────────────────────
+// ─── StatusBadge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     "Checked In": "bg-emerald-100 text-emerald-700",
@@ -82,40 +74,41 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ── StatCard ──────────────────────────────────────────────────────────────────
+// ─── StatCard — colored gradient (matches screenshot) ─────────────────────────
 function StatCard({ icon, label, value, sub, gradient, loading }: {
   icon: React.ReactNode; label: string; value: number | string;
   sub?: string; gradient: string; loading?: boolean;
 }) {
   return (
-    <div className={`relative rounded-3xl p-5 overflow-hidden border border-white/20 shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${gradient}`}>
+    <div className={`relative rounded-3xl p-5 overflow-hidden border border-white/10 shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${gradient}`}>
       <div className="flex items-start justify-between mb-3">
         <div className="p-2.5 bg-white/20 rounded-2xl">{icon}</div>
         {sub && <span className="text-[10px] font-bold text-white/80 bg-white/20 px-2.5 py-1 rounded-full">{sub}</span>}
       </div>
       {loading
         ? <div className="h-9 w-16 bg-white/30 rounded-xl animate-pulse mb-1" />
-        : <p className="text-4xl font-black text-white tracking-tight">{value}</p>
-      }
+        : <p className="text-4xl font-black text-white tracking-tight">{value}</p>}
       <p className="text-[11px] text-white/80 font-semibold mt-1">{label}</p>
     </div>
   );
 }
 
-// ── Field ─────────────────────────────────────────────────────────────────────
+// ─── Field ────────────────────────────────────────────────────────────────────
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline gap-2">
         <label className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">{label}</label>
-        {hint && <span className="text-[10px] text-slate-400 normal-case">{hint}</span>}
+        {hint && <span className="text-[10px] text-slate-400">{hint}</span>}
       </div>
       {children}
     </div>
   );
 }
 
-// ── NewsFormModal ─────────────────────────────────────────────────────────────
+// ─── NewsFormModal ─────────────────────────────────────────────────────────────
+// FIX: Modal is constrained to viewport height and sits BELOW the header.
+// On mobile it slides up from bottom. On desktop it's centered with max-height.
 function NewsFormModal({ post, onClose, onSaved }: {
   post?: NewsPost | null; onClose: () => void; onSaved: () => void;
 }) {
@@ -139,7 +132,7 @@ function NewsFormModal({ post, onClose, onSaved }: {
   const [error, setError] = useState<string | null>(null);
 
   const set = (key: string, val: unknown) =>
-    setFormState(f => ({ ...f, [key]: val }));
+    setFormState(p => ({ ...p, [key]: val }));
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -150,85 +143,55 @@ function NewsFormModal({ post, onClose, onSaved }: {
 
   const handleSubmit = async () => {
     setError(null);
-
-    // ── Client-side validation (mirrors DB constraints) ──
-    if (form.title.trim().length < 4) {
-      setError("Title must be at least 4 characters."); return;
-    }
-    if (form.description.trim().length < 20) {
-      setError("Description must be at least 20 characters."); return;
-    }
-    if (form.is_promo) {
-      if (!form.promo_start || !form.promo_end) {
-        setError("Promo posts need both start and end dates."); return;
-      }
-      if (form.promo_end < form.promo_start) {
-        setError("Promo end date must be on or after start date."); return;
-      }
-    }
+    if (form.title.trim().length < 4) { setError("Title must be at least 4 characters."); return; }
+    if (form.description.trim().length < 20) { setError("Description must be at least 20 characters."); return; }
+    if (form.is_promo && (!form.promo_start || !form.promo_end)) { setError("Promo posts need both start and end dates."); return; }
+    if (form.is_promo && form.promo_start && form.promo_end && form.promo_end < form.promo_start) { setError("Promo end must be on or after start date."); return; }
 
     setSaving(true);
     try {
       let image_path: string | null = post?.image_path ?? null;
       let image_url: string | null = post?.image_url ?? null;
 
-      // ── Upload image ──────────────────────────────────
       if (imageFile) {
         const storagePath = buildStoragePath(form.is_promo, form.is_hiring, imageFile.name);
-
-        const { error: uploadErr } = await supabase.storage
+        const { error: upErr } = await supabase.storage
           .from("news_images")
-          .upload(storagePath, imageFile, {
-            upsert: true,
-            contentType: imageFile.type,
-          });
-
-        if (uploadErr) {
-          throw new Error(`Image upload failed: ${uploadErr.message}`);
-        }
-
-        const { data: urlData } = supabase.storage
-          .from("news_images")
-          .getPublicUrl(storagePath);
-
-        image_path = storagePath;           // e.g. "promo/promo_1710000000.jpg"
+          .upload(storagePath, imageFile, { upsert: true, contentType: imageFile.type });
+        if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
+        const { data: urlData } = supabase.storage.from("news_images").getPublicUrl(storagePath);
+        image_path = storagePath;
         image_url = urlData.publicUrl;
       }
 
-      // ── Build DB payload (only DB columns, no extra fields) ──
-      const payload = {
+      // Only include columns that exist in news_posts — no extra fields
+      const payload: Record<string, unknown> = {
         title: form.title.trim(),
         category: form.category,
         description: form.description.trim(),
         body: form.body.trim() || null,
         is_promo: form.is_promo,
-        promo_start: form.is_promo ? (form.promo_start || null) : null,
-        promo_end: form.is_promo ? (form.promo_end || null) : null,
         is_hiring: form.is_hiring,
         status: form.status,
         image_path,
         image_url,
+        promo_start: form.is_promo ? (form.promo_start || null) : null,
+        promo_end: form.is_promo ? (form.promo_end || null) : null,
       };
 
       if (isEdit) {
-        const { error: e } = await supabase
-          .from("news_posts")
-          .update(payload)
-          .eq("id", post!.id);
-        if (e) throw new Error(e.message);
+        const { error: e } = await supabase.from("news_posts").update(payload).eq("id", post!.id);
+        if (e) throw new Error(`Update failed: ${e.message}`);
       } else {
-        const { error: e } = await supabase
-          .from("news_posts")
-          .insert(payload);
-        if (e) throw new Error(e.message);
+        const { error: e } = await supabase.from("news_posts").insert(payload);
+        if (e) throw new Error(`Insert failed: ${e.message}`);
       }
 
       onSaved();
       onClose();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Something went wrong.";
-      setError(msg);
-      console.error("NewsFormModal error:", e);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      console.error("[NewsFormModal]", err);
     } finally {
       setSaving(false);
     }
@@ -237,11 +200,43 @@ function NewsFormModal({ post, onClose, onSaved }: {
   const folder = form.is_promo ? "promo" : form.is_hiring ? "hiring" : "company";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-2xl max-h-[95dvh] sm:max-h-[88vh] overflow-y-auto shadow-2xl border border-slate-200 rounded-t-3xl sm:rounded-3xl flex flex-col">
+    <>
+      {/* ── Backdrop ── */}
+      <div
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-3xl">
+      {/*
+        ── Modal container ──
+        DESKTOP: fixed, centered, max-w-2xl, does NOT exceed viewport.
+                 top: accounts for the ~64px header so it never goes behind it.
+        MOBILE:  slides up from bottom, max-height 90dvh so it doesn't exceed screen.
+        Key: we use `inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:-translate-x-1/2`
+             so mobile = full-width bottom sheet, desktop = centered dialog.
+      */}
+      <div
+        className={[
+          // Positioning
+          "fixed z-50",
+          // Mobile — bottom sheet
+          "inset-x-0 bottom-0",
+          // Desktop — centered, below header
+          "sm:top-[72px] sm:bottom-auto sm:left-1/2 sm:-translate-x-1/2",
+          // Sizing
+          "w-full sm:max-w-2xl",
+          // Height: never taller than available space
+          "max-h-[90dvh] sm:max-h-[calc(100dvh-88px)]",
+          // Shape
+          "rounded-t-3xl sm:rounded-3xl",
+          // Style
+          "bg-white shadow-2xl border border-slate-200",
+          // Scroll
+          "flex flex-col overflow-hidden",
+        ].join(" ")}
+      >
+        {/* ── Header (sticky inside modal) ── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-sky-50 rounded-xl border border-sky-100">
               <Newspaper size={16} className="text-sky-500" />
@@ -253,13 +248,16 @@ function NewsFormModal({ post, onClose, onSaved }: {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-xl transition-colors flex-shrink-0"
+          >
             <X size={16} className="text-slate-400" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-5 flex-1">
+        {/* ── Scrollable body ── */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {error && (
             <div className="flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs">
               <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
@@ -271,22 +269,13 @@ function NewsFormModal({ post, onClose, onSaved }: {
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
             <div className="sm:col-span-3">
               <Field label="Title" hint="* min 4 chars">
-                <input
-                  value={form.title}
-                  onChange={e => set("title", e.target.value)}
-                  placeholder="Enter post title..."
-                  className={inputCls}
-                />
+                <input value={form.title} onChange={e => set("title", e.target.value)} placeholder="Enter post title..." className={inp} />
               </Field>
             </div>
             <div className="sm:col-span-2">
               <Field label="Category">
                 <div className="relative">
-                  <select
-                    value={form.category}
-                    onChange={e => set("category", e.target.value)}
-                    className={`${inputCls} appearance-none pr-9`}
-                  >
+                  <select value={form.category} onChange={e => set("category", e.target.value)} className={`${inp} appearance-none pr-9`}>
                     {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -302,7 +291,7 @@ function NewsFormModal({ post, onClose, onSaved }: {
               onChange={e => set("description", e.target.value)}
               placeholder="Short description shown on preview cards..."
               rows={2}
-              className={textareaCls}
+              className={`${inp} resize-none`}
             />
             <p className={`text-right text-[10px] font-mono mt-1 ${form.description.trim().length < 20 ? "text-red-400" : "text-emerald-500"}`}>
               {form.description.trim().length} / 20 min
@@ -316,7 +305,7 @@ function NewsFormModal({ post, onClose, onSaved }: {
               onChange={e => set("body", e.target.value)}
               placeholder="Full article content..."
               rows={4}
-              className={textareaCls}
+              className={`${inp} resize-none`}
             />
           </Field>
 
@@ -329,11 +318,8 @@ function NewsFormModal({ post, onClose, onSaved }: {
               {imagePreview ? (
                 <div className="flex items-center gap-4 p-4">
                   <div className="relative flex-shrink-0">
-                    <img
-                      src={imagePreview}
-                      alt="preview"
-                      className="w-24 h-16 object-cover rounded-xl ring-2 ring-sky-200"
-                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imagePreview} alt="preview" className="w-24 h-16 object-cover rounded-xl ring-2 ring-sky-200" />
                     <div className="absolute inset-0 bg-black/30 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Upload size={16} className="text-white" />
                     </div>
@@ -341,17 +327,15 @@ function NewsFormModal({ post, onClose, onSaved }: {
                   <div>
                     <p className="text-sm font-semibold text-slate-700">Image ready</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">{imageFile?.name ?? "existing image"}</p>
-                    <p className="text-[10px] text-sky-500 mt-0.5 font-mono">{folder}/{imageFile?.name ?? "file"}</p>
+                    <p className="text-[10px] text-sky-500 mt-0.5 font-mono">{folder}/{imageFile?.name ?? "—"}</p>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center py-8 gap-2 group-hover:bg-sky-50/50 transition-colors">
-                  <div className="w-12 h-12 bg-slate-100 group-hover:bg-sky-100 rounded-2xl flex items-center justify-center transition-colors">
-                    <Upload size={20} className="text-slate-400 group-hover:text-sky-500 transition-colors" />
+                <div className="flex flex-col items-center py-7 gap-2">
+                  <div className="w-11 h-11 bg-slate-100 group-hover:bg-sky-100 rounded-2xl flex items-center justify-center transition-colors">
+                    <Upload size={18} className="text-slate-400 group-hover:text-sky-500 transition-colors" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-500 group-hover:text-slate-700 transition-colors">
-                    Click to upload image
-                  </p>
+                  <p className="text-sm font-semibold text-slate-500">Click to upload image</p>
                   <p className="text-[11px] text-slate-400">JPG, PNG, WEBP</p>
                 </div>
               )}
@@ -368,33 +352,22 @@ function NewsFormModal({ post, onClose, onSaved }: {
               <label
                 key={flag.key}
                 className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all select-none ${flag.val
-                    ? flag.accent === "amber"
-                      ? "border-amber-300 bg-amber-50"
-                      : "border-emerald-300 bg-emerald-50"
-                    : "border-slate-200 hover:border-slate-300 bg-white"
+                    ? flag.accent === "amber" ? "border-amber-300 bg-amber-50" : "border-emerald-300 bg-emerald-50"
+                    : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
               >
                 <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${flag.val
-                    ? flag.accent === "amber"
-                      ? "bg-amber-500 border-amber-500"
-                      : "bg-emerald-500 border-emerald-500"
+                    ? flag.accent === "amber" ? "bg-amber-500 border-amber-500" : "bg-emerald-500 border-emerald-500"
                     : "border-slate-300"
                   }`}>
                   {flag.val && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
                 </div>
-                <input
-                  type="checkbox"
-                  className="hidden"
-                  checked={flag.val}
-                  onChange={e => set(flag.key, e.target.checked)}
-                />
+                <input type="checkbox" className="hidden" checked={flag.val} onChange={e => set(flag.key, e.target.checked)} />
                 <div>
                   <p className={`text-xs font-bold flex items-center gap-1.5 ${flag.val
                       ? flag.accent === "amber" ? "text-amber-700" : "text-emerald-700"
                       : "text-slate-600"
-                    }`}>
-                    {flag.icon} {flag.label}
-                  </p>
+                    }`}>{flag.icon} {flag.label}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">{flag.sub}</p>
                 </div>
               </label>
@@ -429,10 +402,8 @@ function NewsFormModal({ post, onClose, onSaved }: {
                   type="button"
                   onClick={() => set("status", s)}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all capitalize ${form.status === s
-                      ? s === "published"
-                        ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200"
-                        : s === "draft"
-                          ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200"
+                      ? s === "published" ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200"
+                        : s === "draft" ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200"
                           : "bg-slate-500 border-slate-500 text-white"
                       : "border-slate-200 text-slate-500 hover:border-slate-300 bg-white"
                     }`}
@@ -445,8 +416,8 @@ function NewsFormModal({ post, onClose, onSaved }: {
           </Field>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white rounded-b-3xl">
+        {/* ── Footer (sticky inside modal) ── */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 flex-shrink-0 bg-white">
           <button
             onClick={onClose}
             className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
@@ -458,31 +429,30 @@ function NewsFormModal({ post, onClose, onSaved }: {
             disabled={saving}
             className="px-6 py-2.5 text-sm font-bold text-white bg-sky-500 hover:bg-sky-600 disabled:opacity-50 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-sky-200"
           >
-            {saving
-              ? <RefreshCw size={14} className="animate-spin" />
-              : isEdit ? <Pencil size={14} /> : <Plus size={14} />}
-            {saving ? "Saving…" : isEdit ? "Save Changes" : "Publish Post"}
+            {saving ? <RefreshCw size={14} className="animate-spin" /> : isEdit ? <Pencil size={14} /> : <Plus size={14} />}
+            {saving ? "Saving…" : isEdit ? "Save Changes" : "+ Publish Post"}
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
-// ── DeleteConfirm ─────────────────────────────────────────────────────────────
+// ─── DeleteConfirm ────────────────────────────────────────────────────────────
 function DeleteConfirm({ title, onClose, onConfirm, loading }: {
   title: string; onClose: () => void; onConfirm: () => void; loading: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-100">
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-slate-100">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2.5 bg-red-50 rounded-2xl border border-red-100">
             <Trash2 size={18} className="text-red-500" />
           </div>
           <div>
             <h3 className="font-bold text-slate-800 text-sm">Delete Post</h3>
-            <p className="text-[10px] text-slate-400">This action cannot be undone</p>
+            <p className="text-[10px] text-slate-400">This cannot be undone</p>
           </div>
         </div>
         <p className="text-sm text-slate-500 leading-relaxed mb-5">
@@ -490,50 +460,52 @@ function DeleteConfirm({ title, onClose, onConfirm, loading }: {
           The associated image will also be removed from storage.
         </p>
         <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 text-sm font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 py-2.5 text-sm font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-xl transition-all flex items-center justify-center gap-2"
-          >
+          <button onClick={onClose} className="flex-1 py-2.5 text-sm font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">Cancel</button>
+          <button onClick={onConfirm} disabled={loading} className="flex-1 py-2.5 text-sm font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-xl transition-all flex items-center justify-center gap-2">
             {loading ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
             {loading ? "Deleting…" : "Delete"}
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
-// ── NewsViewModal ─────────────────────────────────────────────────────────────
+// ─── NewsViewModal ────────────────────────────────────────────────────────────
 function NewsViewModal({ post, onClose, onEdit, onDelete }: {
   post: NewsPost; onClose: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-2xl max-h-[95dvh] sm:max-h-[85vh] overflow-y-auto border-t sm:border border-slate-200 rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl">
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className={[
+        "fixed z-50",
+        "inset-x-0 bottom-0",
+        "sm:top-[72px] sm:bottom-auto sm:left-1/2 sm:-translate-x-1/2",
+        "w-full sm:max-w-2xl",
+        "max-h-[90dvh] sm:max-h-[calc(100dvh-88px)]",
+        "rounded-t-3xl sm:rounded-3xl",
+        "bg-white shadow-2xl border border-slate-200",
+        "flex flex-col overflow-hidden",
+      ].join(" ")}>
         {post.image_url ? (
-          <div className="relative h-52 sm:h-64 flex-shrink-0 overflow-hidden rounded-t-3xl">
+          <div className="relative h-48 flex-shrink-0 overflow-hidden rounded-t-3xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={post.image_url} alt={post.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent" />
-            <button onClick={onClose} className="absolute top-3 right-3 p-2 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-xl border border-white/20 transition-all">
+            <button onClick={onClose} className="absolute top-3 right-3 p-2 bg-black/30 backdrop-blur-sm rounded-xl border border-white/20 transition-all">
               <X size={15} className="text-white" />
             </button>
             <div className="absolute top-3 left-3 flex gap-1.5">
-              {post.is_promo && <span className="bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Megaphone size={8} /> PROMO</span>}
-              {post.is_hiring && <span className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><BriefcaseBusiness size={8} /> HIRING</span>}
+              {post.is_promo && <span className="bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">PROMO</span>}
+              {post.is_hiring && <span className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">HIRING</span>}
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {post.is_promo && <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"><Megaphone size={9} /> PROMO</span>}
-              {post.is_hiring && <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"><BriefcaseBusiness size={9} /> HIRING</span>}
+              {post.is_promo && <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full">PROMO</span>}
+              {post.is_hiring && <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full">HIRING</span>}
               <StatusBadge status={post.status} />
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
@@ -541,34 +513,24 @@ function NewsViewModal({ post, onClose, onEdit, onDelete }: {
             </button>
           </div>
         )}
-
-        <div className="px-6 py-5 flex-1 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="text-[10px] font-bold tracking-widest text-sky-500 uppercase">{post.category}</span>
+              <span className="text-[10px] font-black tracking-widest text-sky-500 uppercase">{post.category}</span>
               {post.image_url && <StatusBadge status={post.status} />}
             </div>
             <h2 className="text-xl font-black text-slate-800 leading-snug">{post.title}</h2>
-            <p className="text-[11px] text-slate-400 mt-1">
-              {new Date(post.published_at).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-            </p>
+            <p className="text-[11px] text-slate-400 mt-1">{new Date(post.published_at).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
             <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">Description</p>
             <p className="text-sm text-slate-600 leading-relaxed">{post.description}</p>
           </div>
-          {post.body && (
-            <div>
-              <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">Full Article</p>
-              <p className="text-sm text-slate-500 leading-loose whitespace-pre-wrap">{post.body}</p>
-            </div>
-          )}
+          {post.body && <p className="text-sm text-slate-500 leading-loose whitespace-pre-wrap">{post.body}</p>}
           {post.is_promo && post.promo_start && post.promo_end && (
             <div className="flex items-center gap-3 p-3.5 bg-amber-50 rounded-2xl border border-amber-100">
               <Megaphone size={14} className="text-amber-500 flex-shrink-0" />
-              <p className="text-xs text-amber-700">
-                Promo: <strong>{post.promo_start}</strong> → <strong>{post.promo_end}</strong>
-              </p>
+              <p className="text-xs text-amber-700">Promo: <strong>{post.promo_start}</strong> → <strong>{post.promo_end}</strong></p>
             </div>
           )}
           {post.image_path && (
@@ -578,12 +540,8 @@ function NewsViewModal({ post, onClose, onEdit, onDelete }: {
             </div>
           )}
         </div>
-
-        <div className="flex items-center gap-3 px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white rounded-b-3xl">
-          <button
-            onClick={onDelete}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-red-500 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 rounded-xl transition-all"
-          >
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-slate-100 flex-shrink-0 bg-white">
+          <button onClick={onDelete} className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-red-500 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 rounded-xl transition-all">
             <Trash2 size={12} /> Delete
           </button>
           <div className="flex-1" />
@@ -593,11 +551,11 @@ function NewsViewModal({ post, onClose, onEdit, onDelete }: {
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeContent({ currentTab, setCurrentTab, adminName }: HomeContentProps) {
   const now = new Date();
   const currentDay = now.getDate();
@@ -607,7 +565,13 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
   const firstDayOfMonth = new Date(currentYear, now.getMonth(), 1).getDay();
 
   // Dashboard state
-  const [stats, setStats] = useState<DashboardStats>({ totalFleet: 0, activeFleet: 0, onboardingFleet: 0, todayVisitors: 0, checkedInVisitors: 0, pendingGatepasses: 0, approvedGatepasses: 0, activeContracts: 0, expiringContracts: 0, totalEmployees: 0, recentHires: 0 });
+  const [stats, setStats] = useState<DashboardStats>({
+    totalFleet: 0, activeFleet: 0, onboardingFleet: 0,
+    todayVisitors: 0, checkedInVisitors: 0,
+    pendingGatepasses: 0, approvedGatepasses: 0,
+    activeContracts: 0, expiringContracts: 0,
+    totalEmployees: 0, recentHires: 0,
+  });
   const [recentVisitors, setRecentVisitors] = useState<RecentVisitor[]>([]);
   const [recentGatepasses, setRecentGatepasses] = useState<RecentGatepass[]>([]);
   const [fleetList, setFleetList] = useState<FleetVehicle[]>([]);
@@ -619,7 +583,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
   const [newsPosts, setNewsPosts] = useState<NewsPost[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsFilter, setNewsFilter] = useState<"all" | "published" | "draft" | "promo" | "hiring">("all");
-  const [showNewsForm, setShowNewsForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingPost, setEditingPost] = useState<NewsPost | null>(null);
   const [viewingPost, setViewingPost] = useState<NewsPost | null>(null);
   const [deletingPost, setDeletingPost] = useState<NewsPost | null>(null);
@@ -632,7 +596,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
       const ago30 = new Date(Date.now() - 30 * 864e5).toISOString().split("T")[0];
       const fwd30 = new Date(Date.now() + 30 * 864e5).toISOString().split("T")[0];
 
-      const [fleetRes, visitorsRes, gatepasses, contracts, expiring, employees, hires, visitorList, gpList, fleetItems] =
+      const [fleetRes, visitorsRes, gpRes, contractsRes, expiringRes, empRes, hiresRes, visitorList, gpList, fleetItems] =
         await Promise.all([
           supabase.from("log2_fleet").select("status", { count: "exact" }),
           supabase.from("administrative_walkin_visitors").select("*", { count: "exact" }).gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`),
@@ -646,7 +610,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
           supabase.from("log2_fleet").select("id, unit_id, plate_number, model, type, status, driver_name").order("created_at", { ascending: false }).limit(6),
         ]);
 
-      const fd = fleetRes.data ?? [], gpd = gatepasses.data ?? [];
+      const fd = fleetRes.data ?? [], gpd = gpRes.data ?? [];
       setStats({
         totalFleet: fleetRes.count ?? 0,
         activeFleet: fd.filter(v => v.status === "Active").length,
@@ -655,10 +619,10 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
         checkedInVisitors: (visitorsRes.data ?? []).filter(v => v.status === "Checked In").length,
         pendingGatepasses: gpd.filter(g => g.status === "pending").length,
         approvedGatepasses: gpd.filter(g => g.status === "approved").length,
-        activeContracts: contracts.count ?? 0,
-        expiringContracts: expiring.count ?? 0,
-        totalEmployees: employees.count ?? 0,
-        recentHires: hires.count ?? 0,
+        activeContracts: contractsRes.count ?? 0,
+        expiringContracts: expiringRes.count ?? 0,
+        totalEmployees: empRes.count ?? 0,
+        recentHires: hiresRes.count ?? 0,
       });
       setRecentVisitors(visitorList.data ?? []);
       setRecentGatepasses(gpList.data ?? []);
@@ -691,9 +655,9 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
   useEffect(() => { if (currentTab === "News") fetchNews(); }, [currentTab, fetchNews]);
 
-  // ── Realtime subscriptions ──────────────────────────────────────────────────
+  // ── Realtime ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const ch = [
+    const channels = [
       supabase.channel("wk-rt").on("postgres_changes", { event: "*", schema: "public", table: "administrative_walkin_visitors" }, fetchDashboardData).subscribe(),
       supabase.channel("gp-rt").on("postgres_changes", { event: "*", schema: "public", table: "administrative_online_gatepass" }, fetchDashboardData).subscribe(),
       supabase.channel("fl-rt").on("postgres_changes", { event: "*", schema: "public", table: "log2_fleet" }, fetchDashboardData).subscribe(),
@@ -703,7 +667,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
         if (currentTab === "News") fetchNews();
       }).subscribe(),
     ];
-    return () => { ch.forEach(c => supabase.removeChannel(c)); };
+    return () => { channels.forEach(c => supabase.removeChannel(c)); };
   }, [fetchDashboardData, fetchNews, currentTab]);
 
   // ── handleDeletePost ────────────────────────────────────────────────────────
@@ -723,14 +687,13 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
     }
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Modals */}
-      {(showNewsForm || editingPost) && (
+      {/* ── Modals ─────────────────────────────────────────────────────────── */}
+      {(showForm || editingPost) && (
         <NewsFormModal
           post={editingPost}
-          onClose={() => { setShowNewsForm(false); setEditingPost(null); }}
+          onClose={() => { setShowForm(false); setEditingPost(null); }}
           onSaved={fetchNews}
         />
       )}
@@ -751,14 +714,14 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
         />
       )}
 
-      <div className="flex flex-col xl:flex-row gap-5 animate-in fade-in slide-in-from-bottom-3 duration-500">
+      {/* ── Page layout ────────────────────────────────────────────────────── */}
+      <div className="flex flex-col xl:flex-row gap-5">
 
-        {/* ── Main column ─────────────────────────────────────────────────── */}
+        {/* Main column */}
         <div className="flex-[3] flex flex-col gap-5 min-w-0">
 
-          {/* Top bar */}
+          {/* Tab bar + Live pill */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-            {/* Tab switcher */}
             <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
               {["Dashboard", "News", "Welcome"].map(tab => (
                 <button
@@ -774,7 +737,6 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
               ))}
             </div>
 
-            {/* Live pill */}
             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm w-fit">
               {isOnline ? (
                 <>
@@ -788,7 +750,9 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                 <><WifiOff size={10} className="text-red-400" /> OFFLINE</>
               )}
               {lastUpdated && (
-                <span className="text-slate-300">· {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                <span className="text-slate-300">
+                  · {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
               )}
               <button onClick={fetchDashboardData} className="hover:text-sky-500 transition-colors ml-1">
                 <RefreshCw size={10} className={statsLoading ? "animate-spin" : ""} />
@@ -796,10 +760,10 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
             </div>
           </div>
 
-          {/* ══ DASHBOARD TAB ════════════════════════════════════════════════ */}
+          {/* ══ DASHBOARD ════════════════════════════════════════════════════ */}
           {currentTab === "Dashboard" && (
             <>
-              {/* Hero */}
+              {/* Hero banner */}
               <div className="relative w-full h-52 sm:h-64 rounded-[2rem] overflow-hidden bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 flex items-end shadow-xl shadow-sky-200 border-4 border-white group">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                 <div className="absolute top-6 left-8 z-10">
@@ -826,7 +790,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                 </div>
               </div>
 
-              {/* Stat grid */}
+              {/* Stats grid — colored gradients matching screenshot */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <StatCard icon={<Car size={16} className="text-white" />} label="Total Fleet" value={stats.totalFleet} sub={`${stats.activeFleet} active`} gradient="bg-gradient-to-br from-sky-500 to-sky-700" loading={statsLoading} />
                 <StatCard icon={<Users size={16} className="text-white" />} label="Today's Visitors" value={stats.todayVisitors} sub={`${stats.checkedInVisitors} on-site`} gradient="bg-gradient-to-br from-emerald-500 to-emerald-700" loading={statsLoading} />
@@ -849,19 +813,17 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                   ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse mb-2" />)
                   : recentVisitors.length === 0
                     ? <div className="flex items-center gap-3 py-6 text-slate-400 text-xs justify-center"><Users size={22} strokeWidth={1.5} className="opacity-40" /> No visitors today</div>
-                    : (
-                      <div className="space-y-2 mb-5">
-                        {recentVisitors.map(v => (
-                          <div key={v.id} className="flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-xl bg-sky-100 flex items-center justify-center"><Users size={13} className="text-sky-600" /></div>
-                              <div><p className="text-xs font-bold text-slate-700">{v.name}</p><p className="text-[10px] text-slate-400">{v.type}</p></div>
-                            </div>
-                            <StatusBadge status={v.status} />
+                    : <div className="space-y-2 mb-5">
+                      {recentVisitors.map(v => (
+                        <div key={v.id} className="flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-sky-100 flex items-center justify-center"><Users size={13} className="text-sky-600" /></div>
+                            <div><p className="text-xs font-bold text-slate-700">{v.name}</p><p className="text-[10px] text-slate-400">{v.type}</p></div>
                           </div>
-                        ))}
-                      </div>
-                    )
+                          <StatusBadge status={v.status} />
+                        </div>
+                      ))}
+                    </div>
                 }
 
                 <p className="text-[10px] font-bold tracking-widest text-slate-300 uppercase mb-3">Gate Passes</p>
@@ -869,28 +831,26 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                   ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse mb-2" />)
                   : recentGatepasses.length === 0
                     ? <div className="flex items-center gap-3 py-6 text-slate-400 text-xs justify-center"><DoorOpen size={22} strokeWidth={1.5} className="opacity-40" /> No gate passes</div>
-                    : (
-                      <div className="space-y-2">
-                        {recentGatepasses.map(gp => (
-                          <div key={gp.id} className="flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0"><DoorOpen size={13} className="text-violet-600" /></div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-700 truncate">{gp.requested_by_name}</p>
-                                <p className="text-[10px] text-slate-400 truncate">{gp.department ?? "—"} · {gp.visit_date}</p>
-                              </div>
+                    : <div className="space-y-2">
+                      {recentGatepasses.map(gp => (
+                        <div key={gp.id} className="flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-colors">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0"><DoorOpen size={13} className="text-violet-600" /></div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-700 truncate">{gp.requested_by_name}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{gp.department ?? "—"} · {gp.visit_date}</p>
                             </div>
-                            <StatusBadge status={gp.status} />
                           </div>
-                        ))}
-                      </div>
-                    )
+                          <StatusBadge status={gp.status} />
+                        </div>
+                      ))}
+                    </div>
                 }
               </div>
             </>
           )}
 
-          {/* ══ NEWS TAB ══════════════════════════════════════════════════════ */}
+          {/* ══ NEWS ══════════════════════════════════════════════════════════ */}
           {currentTab === "News" && (
             <div className="flex flex-col gap-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -901,7 +861,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                   <p className="text-[11px] text-slate-400 mt-0.5 font-mono">news_posts · news_images bucket</p>
                 </div>
                 <button
-                  onClick={() => { setEditingPost(null); setShowNewsForm(true); }}
+                  onClick={() => { setEditingPost(null); setShowForm(true); }}
                   className="flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-2xl shadow-lg shadow-sky-200 transition-all w-fit"
                 >
                   <Plus size={14} /> New Post
@@ -928,15 +888,13 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
               {/* Grid */}
               {newsLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-56 bg-slate-100 rounded-3xl animate-pulse" />
-                  ))}
+                  {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-56 bg-slate-100 rounded-3xl animate-pulse" />)}
                 </div>
               ) : newsPosts.length === 0 ? (
                 <div className="flex flex-col items-center py-20 text-slate-400 bg-white rounded-3xl border-2 border-dashed border-slate-200">
                   <Newspaper size={40} strokeWidth={1.2} className="mb-3 opacity-30" />
                   <p className="font-bold text-sm text-slate-500">No posts found</p>
-                  <p className="text-xs mt-1 text-slate-400">Click "New Post" to create one</p>
+                  <p className="text-xs mt-1">Click "New Post" to create one</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -952,22 +910,18 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                           : <div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon size={36} strokeWidth={1.2} /></div>
                         }
                         <div className="absolute top-2.5 left-2.5 flex gap-1.5">
-                          {post.is_promo && <span className="bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><Megaphone size={8} /> PROMO</span>}
-                          {post.is_hiring && <span className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><BriefcaseBusiness size={8} /> HIRING</span>}
+                          {post.is_promo && <span className="bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">PROMO</span>}
+                          {post.is_hiring && <span className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">HIRING</span>}
                         </div>
                         <div className="absolute top-2.5 right-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={e => { e.stopPropagation(); setEditingPost(post); }}
                             className="p-1.5 bg-white/90 hover:bg-sky-500 hover:text-white text-slate-600 rounded-xl shadow-sm transition-all"
-                          >
-                            <Pencil size={12} />
-                          </button>
+                          ><Pencil size={12} /></button>
                           <button
                             onClick={e => { e.stopPropagation(); setDeletingPost(post); }}
                             className="p-1.5 bg-white/90 hover:bg-red-500 hover:text-white text-slate-600 rounded-xl shadow-sm transition-all"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          ><Trash2 size={12} /></button>
                         </div>
                         {post.image_path && (
                           <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm text-white/80 text-[9px] font-mono px-2 py-0.5 rounded-lg">
@@ -983,14 +937,9 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                         </div>
                         <h5 className="font-black text-sm text-slate-800 truncate">{post.title}</h5>
                         <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mt-1 mb-3">{post.description}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-400">
-                            {new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                          </span>
-                          <span className="text-[10px] text-slate-400 flex items-center gap-1 group-hover:text-sky-500 transition-colors">
-                            <Eye size={10} /> View
-                          </span>
-                        </div>
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -999,24 +948,21 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
             </div>
           )}
 
-          {/* ══ WELCOME TAB ══════════════════════════════════════════════════ */}
+          {/* ══ WELCOME ═══════════════════════════════════════════════════════ */}
           {currentTab === "Welcome" && (
             <div className="flex flex-col gap-5">
-              {/* Hero card */}
-              <div className="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 p-8 sm:p-10 shadow-xl shadow-sky-100">
+              <div className="relative rounded-[2rem] overflow-hidden bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 p-8 sm:p-10 shadow-xl shadow-sky-100">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                 <div className="relative z-10">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-white/20 border border-white/30 rounded-2xl">
-                      <Sparkles size={22} className="text-white" />
-                    </div>
+                    <div className="p-3 bg-white/20 border border-white/30 rounded-2xl"><Sparkles size={22} className="text-white" /></div>
                     <div>
                       <h2 className="text-xl font-black text-white">Admin Portal</h2>
                       <p className="text-xs text-white/70">TNVS Fleet Management System</p>
                     </div>
                   </div>
                   <p className="text-white/80 text-sm leading-relaxed max-w-lg">
-                    Welcome to the administrative portal. Manage your fleet, monitor visitors, review gate passes, and stay on top of company operations — all in one place.
+                    Welcome to the administrative portal. Manage fleet, visitors, gate passes, contracts, and company news — all in one place.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-5">
                     {[
@@ -1033,15 +979,14 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                 </div>
               </div>
 
-              {/* Info grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { icon: <Building2 size={20} className="text-sky-500" />, title: "Company Overview", body: "Access fleet status, visitor logs, and operational metrics updated in real-time from your Supabase backend.", bg: "bg-sky-50", border: "border-sky-100" },
-                  { icon: <BookOpen size={20} className="text-violet-500" />, title: "News & Announcements", body: "Create, edit, and publish company news, promotions, and hiring posts with image uploads to organized storage buckets.", bg: "bg-violet-50", border: "border-violet-100" },
-                  { icon: <Heart size={20} className="text-rose-500" />, title: "Live Monitoring", body: "All data updates in real-time via Supabase Realtime subscriptions — no manual refresh needed.", bg: "bg-rose-50", border: "border-rose-100" },
-                  { icon: <ShieldCheck size={20} className="text-emerald-500" />, title: "Secure & Reliable", body: "RLS policies ensure authenticated admins can perform CRUD operations while public users have read-only access.", bg: "bg-emerald-50", border: "border-emerald-100" },
+                  { icon: <Building2 size={20} className="text-sky-500" />, title: "Company Overview", body: "Real-time fleet, visitor, and operational metrics pulled live from your Supabase backend.", bg: "bg-sky-50", border: "border-sky-100" },
+                  { icon: <BookOpen size={20} className="text-violet-500" />, title: "News & Announcements", body: "Create, publish, and manage company news with image uploads to organized storage buckets.", bg: "bg-violet-50", border: "border-violet-100" },
+                  { icon: <Heart size={20} className="text-rose-500" />, title: "Live Monitoring", body: "All data updates in real-time via Supabase subscriptions — no manual refresh needed.", bg: "bg-rose-50", border: "border-rose-100" },
+                  { icon: <ShieldCheck size={20} className="text-emerald-500" />, title: "Secure & Reliable", body: "RLS policies ensure only authenticated admins can write, while the public can read.", bg: "bg-emerald-50", border: "border-emerald-100" },
                 ].map(card => (
-                  <div key={card.title} className={`p-5 ${card.bg} border ${card.border} rounded-2xl hover:shadow-md transition-shadow`}>
+                  <div key={card.title} className={`p-5 ${card.bg} border ${card.border} rounded-2xl`}>
                     <div className="mb-3">{card.icon}</div>
                     <h4 className="font-black text-sm text-slate-800 mb-1.5">{card.title}</h4>
                     <p className="text-[12px] text-slate-500 leading-relaxed">{card.body}</p>
@@ -1049,7 +994,6 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                 ))}
               </div>
 
-              {/* Snapshot */}
               <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm">
                 <h4 className="text-[11px] font-bold tracking-widest text-slate-400 uppercase mb-4 flex items-center gap-2">
                   <Activity size={12} className="text-sky-500" /> System Snapshot
@@ -1059,7 +1003,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
                     { label: "Fleet Units", val: stats.totalFleet, color: "text-sky-500" },
                     { label: "Active Staff", val: stats.totalEmployees, color: "text-emerald-500" },
                     { label: "Live Contracts", val: stats.activeContracts, color: "text-amber-500" },
-                    { label: "Today's Visitors", val: stats.todayVisitors, color: "text-violet-500" },
+                    { label: "Today Visitors", val: stats.todayVisitors, color: "text-violet-500" },
                   ].map(s => (
                     <div key={s.label} className="text-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
                       <p className={`text-2xl font-black ${s.color}`}>{statsLoading ? "—" : s.val}</p>
@@ -1072,7 +1016,7 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
           )}
         </div>
 
-        {/* ── Right Sidebar ──────────────────────────────────────────────────  */}
+        {/* ── Right Sidebar ─────────────────────────────────────────────────── */}
         <div className="flex-1 xl:max-w-[280px] space-y-4">
 
           {/* Calendar */}
@@ -1089,15 +1033,8 @@ export default function HomeContent({ currentTab, setCurrentTab, adminName }: Ho
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1, isToday = day === currentDay;
                 return (
-                  <div
-                    key={day}
-                    className={`aspect-square flex items-center justify-center text-[11px] rounded-xl transition-all font-bold ${isToday
-                        ? "bg-sky-500 text-white shadow-lg shadow-sky-200 scale-110"
-                        : "text-slate-500 hover:bg-slate-100"
-                      }`}
-                  >
-                    {day}
-                  </div>
+                  <div key={day} className={`aspect-square flex items-center justify-center text-[11px] rounded-xl transition-all font-bold ${isToday ? "bg-sky-500 text-white shadow-lg shadow-sky-200 scale-110" : "text-slate-500 hover:bg-slate-100"
+                    }`}>{day}</div>
                 );
               })}
             </div>
